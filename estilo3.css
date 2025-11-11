@@ -1,0 +1,150 @@
+body {
+  font-family: Arial, sans-serif;
+  background-color: #e3f2fd;
+  color: #000;
+  margin: 0;
+  padding: 0;
+}
+
+header {
+  background-color: #1565c0;
+  color: white;
+  padding: 20px;
+  text-align: center;
+}
+table {
+    width: 95%;
+    margin: 30px auto;
+    border-collapse: collapse;
+    background: #fff;
+    border-radius: 12px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    overflow: hidden;
+}
+
+th, td {
+    padding: 12px 15px;
+    text-align: center;
+    border-bottom: 1px solid #e0e6ed;
+}
+
+th {
+    background-color: #0a3d62;
+    color: #fff;
+    font-weight: 600;
+}
+
+main.inicio {
+  display: flex;
+  justify-content: center;
+  margin: 50px;
+}
+
+button {
+  padding: 10px 20px;
+  font-size: 16px;
+  cursor: pointer;
+  background-color: #1976d2;
+  color: white;
+  border: none;
+  border-radius: 5px;
+  margin: 5px;
+}
+
+button:hover {
+  background-color: #0d47a1;
+}
+
+.contenedor {
+  width: 95%;
+  max-width: 1200px;
+  margin: 20px auto;
+}
+
+.buscador {
+  display: flex;
+  justify-content: flex-end;
+  margin-bottom: 15px;
+}
+
+.buscador input {
+  padding: 6px 10px;
+  width: 200px;
+  border-radius: 5px;
+  border: 1px solid #90caf9;
+  margin-right: 5px;
+}
+
+.buscador button {
+  padding: 6px 12px;
+  border-radius: 5px;
+}
+
+table {
+  width: 100%;
+  border-collapse: collapse;
+  margin-top: 15px;
+  border-radius: 10px;
+  overflow: hidden;
+  border: 1px solid #90caf9;
+}
+
+th, td {
+  border: 1px solid #90caf9;
+  padding: 10px;
+  text-align: center;
+  color: #000;
+  background-color: white;
+}
+
+tr:nth-child(even) {
+  background-color: white;
+}
+
+a.btn {
+  text-decoration: none;
+  padding: 5px 10px;
+  border-radius: 3px;
+  color: white;
+  margin: 0 2px;
+  font-size: 14px;
+  background-color: #1976d2;
+}
+
+a.btn:hover {
+  opacity: 0.8;
+}
+
+tr:hover {
+    background-color: #f1f7ff;
+}
+
+/* --- ESTADO Y PAGO --- */
+.verde {
+    color: #1e7e34;
+    font-weight: 600;
+}
+
+.rojo {
+    color: #c0392b;
+    font-weight: 600;
+}
+
+/* --- BOTONES --- */
+.btn {
+    padding: 8px 14px;
+    border: none;
+    border-radius: 8px;
+    font-size: 14px;
+    cursor: pointer;
+    transition: all 0.2s ease-in-out;
+    color: #fff;
+    margin: 0 3px;
+}
+.btn-desactivar {
+    background-color: #ff4d4d;
+}
+
+.btn-desactivar:hover:not(:disabled) {
+    background-color: #e03a3a;
+}

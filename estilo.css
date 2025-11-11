@@ -1,0 +1,158 @@
+body {
+    font-family: Arial, sans-serif;
+    background: #f3f4f6;
+    margin: 0;
+    padding: 0;
+    color: #333;
+}
+
+header {
+    background: #0078D7;
+    color: white;
+    text-align: center;
+    padding: 1.5em 0;
+}
+
+header h1 {
+    margin: 0;
+    font-size: 2em;
+}
+
+.intro {
+    text-align: center;
+    padding: 2em 1em;
+}
+
+.intro p {
+    font-size: 1.1em;
+    color: #555;
+}
+
+.paquetes {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: center;
+    gap: 1.5em;
+    padding: 1em;
+}
+
+.card {
+    background: white;
+    border-radius: 10px;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.1);
+    width: 280px;
+    padding: 1.5em;
+    text-align: center;
+    transition: transform 0.3s ease;
+}
+
+.card:hover {
+    transform: translateY(-5px);
+}
+
+.card h2 {
+    color: #0078D7;
+}
+
+.precio {
+    font-size: 1.5em;
+    font-weight: bold;
+    color: #333;
+    margin: 0.5em 0;
+}
+
+.beneficios {
+    list-style: none;
+    padding: 0;
+    color: #555;
+    text-align: left;
+    margin-bottom: 1em;
+}
+
+.beneficios li {
+    margin: 5px 0;
+}
+
+.btn {
+    background: #0078D7;
+    color: white;
+    border: none;
+    padding: 0.7em 1.5em;
+    border-radius: 6px;
+    cursor: pointer;
+    font-size: 1em;
+}
+
+.btn:hover {
+    background: #005fa3;
+}
+
+footer {
+    text-align: center;
+    padding: 1em;
+    background: #0078D7;
+    color: white;
+    margin-top: 2em;
+}
+
+
+header {
+    background: #0078D7;
+    color: white;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 1em;
+    padding: 1em 0;
+}
+
+/* ====== NAV BAR ====== */
+header {
+    background: linear-gradient(90deg, #0078D7, #00A2FF);
+    color: white;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    padding: 1em 0;
+    box-shadow: 0 3px 8px rgba(0, 0, 0, 0.2);
+}
+
+header h1 {
+    margin: 0;
+    font-size: 2em;
+    letter-spacing: 1px;
+}
+
+nav ul {
+    list-style: none;
+    margin: 10px 0 0;
+    padding: 0;
+    display: flex;
+    gap: 25px;
+}
+
+nav li {
+    display: inline-block;
+}
+
+nav a {
+    text-decoration: none;
+    color: white;
+    font-weight: bold;
+    font-size: 1.1em;
+    padding: 8px 14px;
+    border-radius: 6px;
+    transition: all 0.3s ease;
+}
+
+nav a:hover {
+    background-color: rgba(255, 255, 255, 0.2);
+    transform: scale(1.05);
+}
+
+@media (max-width: 600px) {
+    nav ul {
+        flex-direction: column;
+        gap: 10px;
+    }
+}

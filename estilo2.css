@@ -1,0 +1,78 @@
+:root{
+      --primary-1: #0078D7;
+      --primary-2: #00A2FF;
+    }
+
+    body {
+      min-height: 100vh;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      background: linear-gradient(180deg, #f6f9ff 0%, #eef4ff 100%);
+      font-family: Inter, system-ui, -apple-system, "Segoe UI", Roboto, "Helvetica Neue", Arial;
+      margin: 0;
+    }
+
+    .card-login {
+      width: 100%;
+      max-width: 980px;
+      border-radius: 12px;
+      overflow: hidden;
+      box-shadow: 0 8px 30px rgba(10, 30, 70, 0.08);
+    }
+
+    .brand-side {
+      background: linear-gradient(135deg, var(--primary-1), var(--primary-2));
+      color: white;
+      padding: 2.5rem;
+      display: flex;
+      flex-direction: column;
+      justify-content: center;
+      gap: 1rem;
+    }
+
+    .brand-side h1 {
+      font-size: 1.6rem;
+      margin: 0;
+      letter-spacing: 0.6px;
+    }
+
+    .brand-side p {
+      opacity: 0.92;
+      margin-bottom: 0.6rem;
+    }
+
+    .logo-circle {
+      width: 52px;
+      height: 52px;
+      border-radius: 10px;
+      background: rgba(255,255,255,0.12);
+      display: inline-flex;
+      align-items: center;
+      justify-content: center;
+      font-weight: 700;
+      font-size: 1.15rem;
+    }
+
+    .form-side {
+      padding: 2.2rem;
+      background: white;
+    }
+
+    .form-title {
+      margin-bottom: 1.1rem;
+      font-weight: 700;
+      color: #0b2b4a;
+    }
+
+    .btn-primary-custom {
+      background: linear-gradient(90deg, var(--primary-1), var(--primary-2));
+      border: none;
+    }
+
+    .text-muted-small { font-size: .88rem; color: #6b7b8f; }
+
+    @media (max-width: 767px){
+      .brand-side { display: none; }
+      .card-login { max-width: 420px; }
+    }
