@@ -21,23 +21,62 @@ $result = $conexion->query($query);
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 <style>
-body { background: #f7f9fb; font-family: "Poppins", sans-serif; padding: 40px 20px; }
-.card-table { border-radius: 1rem; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
-th { background-color: #0d6efd; color: white; }
-td { vertical-align: middle; }
+body { 
+    background: #f7f9fb; 
+    font-family: "Poppins", sans-serif; 
+}
+
+/* Tarjeta de tabla */
+.card-table { 
+    border-radius: 1rem; 
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+}
+
+/* Encabezados de tabla */
+th { 
+    background-color: #0d6efd; 
+    color: white; 
+}
+
+/* Celdas alineadas */
+td { 
+    vertical-align: middle; 
+}
+
+/* Navbar minimalista */
+.navbar-pc {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 1000;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    padding: 10px 40px;
+}
+
 </style>
+
 </head>
 <body>
 
-<div class="container">
-    <div class="text-center mb-3">
-        <h1 class="text-primary fw-bold">Contratos</h1>
-    </div>
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary d-none d-lg-flex px-4 py-2" style="box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+  <a class="navbar-brand d-flex align-items-center" href="admin.html">
+    <img src="logo.jpg" alt="Logo" width="40" height="40" class="me-2">
+    <span class="fw-bold">Conect@T Internet</span>
+  </a>
 
-    <div class="mb-3 text-end">
-        <a href="admin.html" class="btn btn-secondary">
-            <i class="bi bi-arrow-left"></i> Regresar
+  <div class="mx-auto text-white fw-semibold h5 m-0"><h2>Panel de Contratos</h2></div>
+
+  <a href="admin.php" class="btn btn-outline-light">
+    <i class="bi bi-arrow-left"></i> Regresar</a>
+</nav>
+
+<br>
+<div class="container">
+    <div class="d-flex align-items-center mb-3">
+        <a href="admin.php" class="btn btn-outline-primary me-3">
+        <i class="bi bi-arrow-left"></i> Regresar
         </a>
+    
     </div>
 
     <div class="card card-table p-3 bg-white">
@@ -52,7 +91,7 @@ td { vertical-align: middle; }
                         <th>Fin</th>
                         <th>Precio</th>
                         <th>Estado</th>
-                        <th>Acción</th>
+                        <th>Acciónes</th>
                     </tr>
                 </thead>
                 <tbody>
@@ -75,11 +114,16 @@ td { vertical-align: middle; }
                                     ?>
                                     <span class="badge bg-<?= $estado_class ?>"><?= $row['estado'] ?></span>
                                 </td>
+                                
                                 <td>
+                                     <a href="editar_contrato.php?id=<?= $row['id'] ?>" class="btn btn-sm btn-warning">
+                                        <i class="bi bi-pencil-square"></i> Editar
+                                     </a>
                                     <a href="contrato_pdf.php?id=<?= $row['id'] ?>" class="btn btn-sm btn-primary" target="_blank">
-                                        <i class="bi bi-file-earmark-pdf"></i> Ver/Descargar
-                                    </a>
+                                          <i class="bi bi-file-earmark-pdf"></i> PDF
+                                     </a>
                                 </td>
+
                             </tr>
                         <?php endwhile; ?>
                     <?php else: ?>
@@ -92,6 +136,19 @@ td { vertical-align: middle; }
 </div>
 
 <script src="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/js/bootstrap.bundle.min.js"></script>
+<script>
+  // Fecha y hora dinámica
+  function actualizarFechaHora() {
+    const ahora = new Date();
+    const opciones = { weekday: 'long', year: 'numeric', month: 'long', day: 'numeric' };
+    const fecha = ahora.toLocaleDateString('es-ES', opciones);
+    const hora = ahora.toLocaleTimeString('es-ES');
+    document.getElementById('fecha-hora').textContent = `${fecha} — ${hora}`;
+  }
+  setInterval(actualizarFechaHora, 1000);
+  actualizarFechaHora();
+</script>
+
 </body>
 </html>
 <?php $conexion->close(); ?>
