@@ -1,115 +1,282 @@
 <?php
 include("conexion.php");
 
-$id = $_GET['id'] ?? 0;
+$id = isset($_GET['id']) ? intval($_GET['id']) : 0;
+$mensaje = "";
+$icono = "";
 
-$stmt = $conexion->prepare("
-SELECT c.id, u.nombre AS cliente, u.correo, u.telefono,
-       p.nombre AS paquete, p.velocidad, c.precio_mensual, c.fecha_inicio, c.fecha_fin, c.estado
-FROM contratos c
-JOIN usuarios u ON c.usuario_id = u.id
-JOIN paquetes p ON c.paquete_id = p.id
-WHERE c.id = ?
-");
-$stmt->bind_param("i", $id);
-$stmt->execute();
-$result = $stmt->get_result();
-$contrato = $result->fetch_assoc();
-
-if(!$contrato){
-    die("Contrato no encontrado");
+// Si no hay id válido, redirigir o mostrar error
+if ($id <= 0) {
+    die("ID de contrato inválido.");
 }
+
+// Procesar actualización
+if ($_SERVER['REQUEST_METHOD'] === 'POST') {
+
+    // Validaciones y casteos
+    $id_post = isset($_POST['id']) ? intval($_POST['id']) : $id;
+    $paquete_id = isset($_POST['paquete_id']) ? intval($_POST['paquete_id']) : 0;
+    $numero_pago = isset($_POST['duracion_meses']) ? intval($_POST['duracion_meses']) : 0;
+    $duracion_meses = isset($_POST['duracion_meses']) ? intval($_POST['duracion_meses']) : 0;
+    $estado = isset($_POST['estado']) ? $conexion->real_escape_string($_POST['estado']) : 'Inactivo';
+    $fecha_inicio = isset($_POST['fecha_inicio']) ? $conexion->real_escape_string($_POST['fecha_inicio']) : date('Y-m-d');
+
+    // Obtener precio del paquete seleccionado (si existe)
+    $precio_mensual = 0.00;
+    $paqRes = $conexion->query("SELECT precio FROM paquetes WHERE id = {$paquete_id} LIMIT 1");
+    if ($paqRes && $paqRes->num_rows > 0) {
+        $paqRow = $paqRes->fetch_assoc();
+        $precio_mensual = floatval($paqRow['precio']);
+    } else {
+        // Si no hay precio en paquete, intenta usar precio actual del contrato (fallback)
+        $cRes = $conexion->query("SELECT precio_mensual FROM contratos WHERE id = {$id_post} LIMIT 1");
+        if ($cRes && $cRes->num_rows > 0) {
+            $cRow = $cRes->fetch_assoc();
+            $precio_mensual = floatval($cRow['precio_mensual']);
+        } else {
+            $precio_mensual = 0.00;
+        }
+    }
+
+    // ACTUALIZA CONTRATOS
+  
+    $sql = "
+        UPDATE contratos 
+        SET paquete_id = ?, fecha_inicio = ?, precio_mensual = ?, estado = ?, duracion_meses = ?
+        WHERE id = ?
+    ";
+
+    $stmt = $conexion->prepare($sql);
+    if ($stmt === false) {
+        // mostrar error de prepare para depuración
+        $mensaje = "Error en la consulta (prepare): " . $conexion->error;
+        $icono = "error";
+    } else {
+        
+        if (!$stmt->bind_param("isdsii", $paquete_id, $fecha_inicio, $precio_mensual, $estado, $duracion_meses, $id_post)) {
+            $mensaje = "Error en bind_param: " . $stmt->error;
+            $icono = "error";
+        } else {
+            if ($stmt->execute()) {
+
+                // borrar calendario anterior
+               $conexion->query("DELETE FROM fechas_pagos WHERE contrato_id = {$id_post}");
+               // generar nuevo calendario
+$insert_sql = "INSERT INTO fechas_pagos 
+(contrato_id, numero_pago, fecha_pago_esperada, monto, estado) 
+VALUES (?, ?, ?, ?, ?)";
+
+$insert_stmt = $conexion->prepare($insert_sql);
+
+if ($insert_stmt === false) {
+    $mensaje = "Error al preparar inserción: " . $conexion->error;
+    $icono = "warning";
+} else {
+
+    for ($i = 1; $i <= $duracion_meses; $i++) {
+
+        $fecha_pago = date('Y-m-d', strtotime("+$i month", strtotime($fecha_inicio)));
+        $monto = floatval($precio_mensual);
+        $estado_pago = "Pendiente";
+
+        // contrato_id (i), numero_pago (i), fecha_pago (s), monto (d), estado (s)
+        $insert_stmt->bind_param("iisss", $id_post, $i, $fecha_pago, $monto, $estado_pago);
+
+        $insert_stmt->execute();
+    }
+
+
+
+    $insert_stmt->close();
+    $mensaje = "¡Contrato actualizado correctamente!";
+    $icono = "success";
+}
+
+            } else {
+                $mensaje = "Error al ejecutar update: " . $stmt->error;
+                $icono = "error";
+            }
+        }
+        $stmt->close();
+    }
+}
+
+// Obtener información del contrato 
+$contratoRes = $conexion->query("
+    SELECT c.*, u.nombre AS cliente, p.nombre AS paquete, p.precio AS precio_paquete
+    FROM contratos c
+    JOIN usuarios u ON c.usuario_id = u.id
+    JOIN paquetes p ON c.paquete_id = p.id
+    WHERE c.id = {$id}
+    LIMIT 1
+");
+if (!$contratoRes || $contratoRes->num_rows == 0) {
+    die("Contrato no encontrado.");
+}
+$contrato = $contratoRes->fetch_assoc();
+
+// Obtener paquetes
+$paquetes = $conexion->query("SELECT * FROM paquetes ORDER BY nombre");
+
+// Obtener calendario
+$pagos = $conexion->query("SELECT * FROM fechas_pagos WHERE contrato_id = {$id} ORDER BY fecha_pago_esperada ASC");
 ?>
 
 <!DOCTYPE html>
 <html lang="es">
 <head>
 <meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Contrato — Conect@T</title>
-
+<title>Editar Contrato — Conect@T</title>
 <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
-<script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
-
+<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
+<script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
 <style>
-body { background: #f7f9fb; font-family: "Poppins", sans-serif; padding: 40px; }
-#contrato { background: white; padding: 20px; border-radius: 10px; box-shadow: 0 4px 15px rgba(0,0,0,0.1); max-width:600px; margin:auto; }
-#logo { display:block; margin:0 auto 10px; max-width:100px; }
+body { background:#f7f9fb;font-family:Poppins,sans-serif;padding:40px 20px; }
+.card { border-radius:1rem;box-shadow:0 4px 15px rgba(0,0,0,0.1); }
+th { background:#0d6efd;color:white; }
 </style>
 </head>
 <body>
 
-<div id="contrato">
-    <img id="logo" src="logo.jpg" alt="Logo Conect@T">
-    <h2 class="text-center mb-3">Contrato de Servicio — Conect@T</h2>
-    <p><strong>Cliente:</strong> <?= htmlspecialchars($contrato['cliente']) ?></p>
-    <p><strong>Correo:</strong> <?= htmlspecialchars($contrato['correo']) ?></p>
-    <p><strong>Teléfono:</strong> <?= $contrato['telefono'] ?? '-' ?></p>
-    <p><strong>Paquete:</strong> <?= $contrato['paquete'].' — '.$contrato['velocidad'] ?></p>
-    <p><strong>Precio Mensual:</strong> $<?= number_format($contrato['precio_mensual'],2) ?></p>
-    <p><strong>Fecha Inicio:</strong> <?= $contrato['fecha_inicio'] ?></p>
-    <p><strong>Fecha Fin:</strong> <?= $contrato['fecha_fin'] ?? '-' ?></p>
-    <p><strong>Estado:</strong> <?= $contrato['estado'] ?></p>
-    <hr>
-    <p>Este contrato certifica que el cliente ha contratado el paquete mencionado y se compromete a cumplir con los pagos correspondientes en tiempo y forma. Conect@T garantiza la prestación del servicio según lo pactado.</p>
-    <div class="text-center mt-3">
-        <button id="descargarPDF" class="btn btn-primary"><i class="bi bi-file-earmark-pdf"></i> Descargar PDF</button>
+<div class="container">
+
+    <div class="d-flex align-items-center mb-3">
+        <a href="contratos.php" class="btn btn-outline-primary me-3">
+            <i class="bi bi-arrow-left"></i> Regresar
+        </a>
+        <h2 class="text-primary fw-bold mb-0">Editar Contrato</h2>
+    </div>
+
+    <div class="card p-4 mb-4">
+        <h5>Información del Contrato</h5>
+
+        <form method="POST">
+            <input type="hidden" name="id" value="<?= htmlspecialchars($contrato['id']) ?>">
+
+            <div class="row">
+                <div class="col-md-4">
+                    <label class="form-label">Cliente</label>
+                    <input type="text" class="form-control" value="<?= htmlspecialchars($contrato['cliente']) ?>" disabled>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Paquete</label>
+                    <select name="paquete_id" id="paqueteSelect" class="form-select" required>
+                        <?php while($p = $paquetes->fetch_assoc()): ?>
+                            <option value="<?= $p['id'] ?>" data-precio="<?= $p['precio'] ?>"
+                                <?= $p['id']==$contrato['paquete_id']?'selected':'' ?>>
+                                <?= htmlspecialchars($p['nombre']) ?> — $<?= number_format($p['precio'],2) ?>
+                            </option>
+                        <?php endwhile; ?>
+                    </select>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Duración</label>
+                    <select name="duracion_meses" class="form-select">
+                        <option value="6" <?= $contrato['duracion_meses']==6?'selected':'' ?>>6 meses</option>
+                        <option value="12" <?= $contrato['duracion_meses']==12?'selected':'' ?>>12 meses</option>
+                    </select>
+                </div>
+            </div>
+
+            <div class="row mt-3">
+
+                <div class="col-md-4">
+                    <label class="form-label">Estado</label>
+                    <select name="estado" class="form-select">
+                        <option <?= $contrato['estado']=='Activo'?'selected':'' ?>>Activo</option>
+                        <option <?= $contrato['estado']=='Suspendido'?'selected':'' ?>>Suspendido</option>
+                        <option <?= $contrato['estado']=='Inactivo'?'selected':'' ?>>Inactivo</option>
+                    </select>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Fecha inicio</label>
+                    <input type="date" name="fecha_inicio" class="form-control"
+                        value="<?= htmlspecialchars($contrato['fecha_inicio']) ?>" required>
+                </div>
+
+                <div class="col-md-4">
+                    <label class="form-label">Precio mensual</label>
+                    <input type="text" id="precioMensual" class="form-control" readonly
+                        value="$<?= number_format(floatval($contrato['precio_mensual']),2) ?>">
+                </div>
+
+            </div>
+
+            <div class="mt-4 text-end">
+                <button type="submit" class="btn btn-outline-primary">
+                    <i class="bi bi-arrow-clockwise"></i> Guardar Cambios
+                </button>
+            </div>
+        </form>
+    </div>
+
+    <div class="card p-4 mb-4">
+        <h5>Calendario de Pagos</h5>
+
+        <table class="table table-hover">
+            <thead>
+                <tr>
+                    <th>Mes</th>
+                    <th>Fecha pago</th>
+                    <th>Monto</th>
+                    <th>Estado</th>
+                </tr>
+            </thead>
+            <tbody>
+                <?php $i=1; if($pagos): while($pago=$pagos->fetch_assoc()): ?>
+                <tr>
+                    <td><?= $i++ ?></td>
+                    <td><?= htmlspecialchars($pago['fecha_pago_esperada']) ?></td>
+                    <td>$<?= number_format($pago['monto'],2) ?></td>
+                    <td>
+                        <span class="badge bg-<?= $pago['estado']=='Pendiente'?'warning':'success' ?>">
+                            <?= htmlspecialchars($pago['estado']) ?>
+                        </span>
+                    </td>
+                </tr>
+                <?php endwhile; else: ?>
+                <tr><td colspan="4">No hay pagos.</td></tr>
+                <?php endif; ?>
+            </tbody>
+        </table>
+
+        <div class="text-end mt-3">
+            <button onclick="window.print()" class="btn btn-outline-primary">
+                <i class="bi bi-printer"></i> Imprimir Calendario
+            </button>
+        </div>
     </div>
 </div>
 
+<?php if(!empty($mensaje)): ?>
 <script>
-document.getElementById('descargarPDF').addEventListener('click', () => {
-    const { jsPDF } = window.jspdf;
-    const doc = new jsPDF();
+Swal.fire({
+    title: '<?= addslashes($mensaje) ?>',
+    icon: '<?= $icono ?>',
+    confirmButtonColor: '#0d6efd'
+}).then(() => {
+    window.location.href = 'editar_contrato.php?id=<?= $id ?>';
+});
+</script>
+<?php endif; ?>
 
-    let y = 20; // posición vertical inicial
+<script>
+// Actualizar precio al cambiar paquete
+document.addEventListener('DOMContentLoaded', () => {
+    const paqueteSelect = document.getElementById('paqueteSelect');
+    const precioInput = document.getElementById('precioMensual');
 
-    // --- Agregar logo ---
-    const img = document.getElementById('logo');
-    const canvas = document.createElement('canvas');
-    const ctx = canvas.getContext('2d');
-    canvas.width = img.naturalWidth;
-    canvas.height = img.naturalHeight;
-    ctx.drawImage(img, 0, 0);
-    const imgData = canvas.toDataURL('image/jpeg');
-    doc.addImage(imgData, 'JPEG', 75, y, 60, 60); // centrado
-    y += 70;
-
-    // --- Título ---
-    doc.setFontSize(18);
-    doc.text("Contrato de Servicio — Conect@T", 105, y, {align: "center"});
-    y += 15;
-
-    // --- Datos ---
-    doc.setFontSize(12);
-    const lineHeight = 8;
-
-    const data = [
-        ["Cliente:", "<?= addslashes($contrato['cliente']) ?>"],
-        ["Correo:", "<?= addslashes($contrato['correo']) ?>"],
-        ["Teléfono:", "<?= addslashes($contrato['telefono'] ?? '-') ?>"],
-        ["Paquete:", "<?= addslashes($contrato['paquete'].' — '.$contrato['velocidad']) ?>"],
-        ["Precio Mensual:", "$<?= number_format($contrato['precio_mensual'],2) ?>"],
-        ["Fecha Inicio:", "<?= $contrato['fecha_inicio'] ?>"],
-        ["Fecha Fin:", "<?= $contrato['fecha_fin'] ?? '-' ?>"],
-        ["Estado:", "<?= $contrato['estado'] ?>"]
-    ];
-
-    data.forEach(item => {
-        doc.text(item[0], 20, y);
-        doc.text(item[1], 70, y);
-        y += lineHeight;
+    paqueteSelect.addEventListener('change', function() {
+        const precio = this.options[this.selectedIndex].getAttribute('data-precio') || 0;
+        precioInput.value = "$" + parseFloat(precio).toFixed(2);
     });
-
-    y += 10;
-    const contratoText = "Este contrato certifica que el cliente ha contratado el paquete mencionado y se compromete a cumplir con los pagos correspondientes en tiempo y forma. Conect@T garantiza la prestación del servicio según lo pactado.";
-    const splitText = doc.splitTextToSize(contratoText, 170);
-    doc.text(splitText, 20, y);
-
-    doc.save("Contrato_<?= $contrato['id'] ?>.pdf");
 });
 </script>
 
 </body>
 </html>
+
 <?php $conexion->close(); ?>
