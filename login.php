@@ -16,7 +16,7 @@ $stmt = $conexion->prepare("SELECT * FROM usuarios WHERE correo = ? AND password
         $usuario = $resultado->fetch_assoc();
 
         if ($usuario['rol'] === 'admin' || $usuario['rol'] === 'admin') {
-            echo "<script>window.location.href='admin.html';</script>";
+            echo "<script>window.location.href='admin.php';</script>";
         } else {
             echo "<script>alert('Bienvenido Cliente'); window.location.href='cliente.php';</script>";
         }

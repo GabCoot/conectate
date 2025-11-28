@@ -23,23 +23,59 @@ $result = $conexion->query($query);
 <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.11.3/font/bootstrap-icons.css">
 
 <style>
-    body { background: #f7f9fb; font-family: "Poppins", sans-serif; padding: 40px 20px; }
     .card-table { border-radius: 1rem; box-shadow: 0 4px 15px rgba(0,0,0,0.1); }
     th { background-color: #0d6efd; color: white; }
     td { vertical-align: middle; }
+ 
+body { 
+    background: #f7f9fb; 
+    font-family: "Poppins", sans-serif; 
+}
+
+.card-table { 
+    border-radius: 1rem; 
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1); 
+}
+
+th { 
+    background-color: #0d6efd; 
+    color: white; 
+}
+
+td { 
+    vertical-align: middle; 
+}
+
+.navbar-pc {
+    position: fixed;
+    top: 0;
+    width: 100%;
+    z-index: 1000;
+    box-shadow: 0 4px 10px rgba(0,0,0,0.1);
+    padding: 10px 40px;
+}
 </style>
 </head>
 <body>
+<nav class="navbar navbar-expand-lg navbar-dark bg-primary d-none d-lg-flex px-4 py-2" style="box-shadow: 0 4px 10px rgba(0,0,0,0.1);">
+  <a class="navbar-brand d-flex align-items-center" href="admin.html">
+    <img src="logo.jpg" alt="Logo" width="40" height="40" class="me-2">
+    <span class="fw-bold">Conect@T Internet</span>
+  </a>
 
+  <div class="mx-auto text-white fw-semibold h5 m-0"><h2>Panel de Clientes</h2></div>
+
+  <a href="admin.php" class="btn btn-outline-light">
+    <i class="bi bi-arrow-left"></i> Regresar</a>
+</nav>
+<br>
 <div class="container">
-    <div class="text-center mb-3">
-        <h1 class="text-primary fw-bold">Lista de Clientes</h1>
-    </div>
-
-    <div class="mb-3 text-end">
-        <a href="admin.html" class="btn btn-secondary">
-            <i class="bi bi-arrow-left"></i> Regresar
+    
+   <div class="d-flex align-items-center mb-3">
+        <a href="admin.php" class="btn btn-outline-primary me-3">
+        <i class="bi bi-arrow-left"></i> Regresar
         </a>
+        <h2 class="text-primary fw-bold mb-0">Panel De Clientes registrados</h2>
     </div>
 
     <div class="card card-table p-3 bg-white">

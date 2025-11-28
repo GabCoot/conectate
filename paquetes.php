@@ -57,7 +57,7 @@ $resultado = $conexion->query("SELECT * FROM paquetes ORDER BY id ASC");
   <div class="card p-4 bg-white">
     <div class="d-flex justify-content-between align-items-center mb-3">
       <div class="d-flex align-items-center gap-2">
-        <a href="admin.html" class="btn btn-outline-primary btn-sm">
+        <a href="admin.php" class="btn btn-outline-primary btn-sm">
           <i class="bi bi-arrow-left-circle"></i> Regresar
         </a>
         <h3 class="fw-bold text-primary m-0"><i class="bi bi-hdd-network"></i> Gestión de Paquetes</h3>
