@@ -131,7 +131,8 @@ $usuarios_query = mysqli_query($conn, "SELECT nombre, correo, activo FROM usuari
   <div class="sidebar-float">
     <a href="ver_clientes.php"><i class="bi bi-people"></i> Clientes</a>
     <a href="contratos.php"><i class="bi bi-file-earmark-text"></i> Contratos</a>
-    <a href="pago.php"><i class="bi bi-cash-coin"></i>Cobros</a>
+    <a href="cobro.php"><i class="bi bi-cash-coin"></i>Cobros</a>
+    <a href="reportes_view.php"><i class="bi-card-checklist"></i>Reportes Generales</a>
     <a href="paquetes.php"><i class="bi bi-menu-button-wide"></i> Paquetes</a>
     <hr>
     <a href="index.html" class="text-danger"><i class="bi bi-box-arrow-right"></i> Salir</a>

@@ -26,21 +26,38 @@ switch($tipo_reporte) {
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>Reportes Generales - Conéctate</title>
+<title>Reportes Generales</title>
 <style>
 * {
     margin: 0;
     padding: 0;
     box-sizing: border-box;
 }
-
+.navbar-admin {
+    position: relative;
+    top: -20px;            
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    background-color: #0d6efd;
+    color: white;
+    padding: 15px 30px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}    
+.navbar-admin img {
+      height: 45px;
+    }
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     min-height: 100vh;
     padding: 20px;
+    
 }
 
 .container {
@@ -396,6 +413,13 @@ header h1 {
 </style>
 </head>
 <body>
+<div class="navbar-admin">
+    <div class="d-flex align-items-center">
+      <img src="logo.jpg" alt="Logo Conect@T" class="me-3">
+      <h3 class="m-0 fw-bold">Conect@T</h3>
+    </div>
+    <span id="fecha-hora" class="fw-light"></span>
+  </div>
 
 <div class="container">
   
@@ -502,9 +526,12 @@ header h1 {
         }
         ?>
     </div>
-    <div class="btn-regresar">
-        <button onclick="window.location.href='admin.html'">Regresar al Panel de Administración</button>
-    </div>
+        <div class="btn-regresar">
+    <button onclick="window.location.href='admin.php'">
+        Regresar al Panel de Administración
+    </button>
+</div>
+
 </div>
 
 </body>

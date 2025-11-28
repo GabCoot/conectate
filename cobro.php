@@ -22,6 +22,7 @@ if (!empty($buscar_nombre)) {
 <!DOCTYPE html>
 <html lang="es">
 <head>
+  <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.2/dist/css/bootstrap.min.css" rel="stylesheet">
   <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap-icons@1.13.1/font/bootstrap-icons.min.css">
 <meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -33,6 +34,23 @@ if (!empty($buscar_nombre)) {
     padding: 0;
     box-sizing: border-box;
 }
+
+.navbar-admin {
+    position: relative;
+    top: -20px;            
+    width: 100vw;
+    margin-left: calc(50% - 50vw);
+    background-color: #0d6efd;
+    color: white;
+    padding: 15px 30px;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    box-shadow: 0 4px 15px rgba(0,0,0,0.1);
+}    
+.navbar-admin img {
+      height: 45px;
+    }
 
 body {
     font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
@@ -419,6 +437,14 @@ header h1 {
 </style>
 </head>
 <body>
+  
+<div class="navbar-admin">
+    <div class="d-flex align-items-center">
+      <img src="logo.jpg" alt="Logo Conect@T" class="me-3">
+      <h3 class="m-0 fw-bold">Conect@T</h3>
+    </div>
+    <span id="fecha-hora" class="fw-light"></span>
+  </div>
 
 <header>
     <h1> Confirmación de Pagos - Conéctate</h1>
@@ -518,7 +544,7 @@ if (!empty($buscar_nombre)) {
 }
 ?>
     <div class="regresar">
-        <button onclick="window.location.href='admin.html'">← Regresar al Panel de Administración</button>
+        <button onclick="window.location.href='admin.php'">← Regresar al Panel de Administración</button>
     </div>
 </div>
 
