@@ -1,91 +1,377 @@
 <?php
-$conexion = new mysqli("localhost", "root", "", "co");
+$conexion = new mysqli("localhost", "root", "", "conexxionbuena");
 if ($conexion->connect_error) {
     die("Error de conexión: " . $conexion->connect_error);
 }
 
-// Cobrar 
-if (isset($_GET['pagar'])) {
-    $id = intval($_GET['pagar']);
-    if ($conexion->query("UPDATE usuarios SET pago = 1 WHERE id = $id")) {
-        header("Location: cobro.php?alert=Cliente cobrado correctamente");
+
+
+// Marcar pagos como "Atrasado" despues de 5 dias
+$conexion->query("
+    UPDATE fechas_pagos
+    SET estado = 'Atrasado'
+    WHERE estado = 'Pendiente'
+      AND fecha_pago_esperada < DATE_SUB(CURDATE(), INTERVAL 5 DAY)
+");
+
+// Suspender contratos que tengan pagos atrasados
+$conexion->query("
+    UPDATE contratos c
+    SET c.estado = 'Suspendido'
+    WHERE c.estado = 'Activo'
+      AND EXISTS (
+          SELECT 1 FROM fechas_pagos f 
+          WHERE f.contrato_id = c.id 
+          AND f.estado = 'Atrasado'
+      )
+");
+
+
+
+if (isset($_POST['confirmar_pago'])) {
+    $referencia = $conexion->real_escape_string($_POST['referencia']);
+    
+    // Buscar el pago por referencia
+    $query = $conexion->query("
+        SELECT 
+            p.id AS pago_id,
+            p.usuario_id,
+            p.contrato_id,
+            p.monto,
+            p.estado
+        FROM pagos p
+        WHERE p.referencia = '$referencia'
+        LIMIT 1
+    ");
+    
+    if ($pago = $query->fetch_assoc()) {
+        
+        if ($pago['estado'] == 'Pagado') {
+            header("Location: cobro.php?msg=Error: Este pago ya fue confirmado anteriormente&ref=$referencia");
+            exit();
+        }
+        
+        $pago_id = $pago['pago_id'];
+        $contrato_id = $pago['contrato_id'];
+        
+        // Iniciar transacción
+        $conexion->begin_transaction();
+        
+        try {
+            // 1. Actualizar estado del pago a "Pagado"
+            $conexion->query("
+                UPDATE pagos 
+                SET estado = 'Pagado',
+                    fecha_pago = CURDATE()
+                WHERE id = $pago_id
+            ");
+            
+            // 2. Obtener las fechas de pago relacionadas con este pago
+            $fechas_query = $conexion->query("
+                SELECT fecha_pago_id 
+                FROM pagos_detalle 
+                WHERE pago_id = $pago_id
+            ");
+            
+            // 3. Actualizar estado de todas las fechas de pago a "Pagado"
+            while ($detalle = $fechas_query->fetch_assoc()) {
+                $fecha_pago_id = $detalle['fecha_pago_id'];
+                $conexion->query("
+                    UPDATE fechas_pagos 
+                    SET estado = 'Pagado' 
+                    WHERE id = $fecha_pago_id
+                ");
+            }
+            
+            // 4. Actualizar contrato (activar y registrar último pago)
+            $conexion->query("
+                UPDATE contratos 
+                SET estado = 'Activo', 
+                    fecha_ultimo_pago = CURDATE() 
+                WHERE id = $contrato_id
+            ");
+            
+            // Confirmar transacción
+            $conexion->commit();
+            
+            header("Location: cobro.php?msg=✅ Pago confirmado correctamente&ref=$referencia");
+            exit();
+            
+        } catch (Exception $e) {
+            $conexion->rollback();
+            header("Location: cobro.php?msg=Error al confirmar el pago: " . $e->getMessage());
+            exit();
+        }
+        
     } else {
-        header("Location: cobro.php?alert=Error al cobrar al cliente");
+        header("Location: cobro.php?msg=Error: No se encontró ningún pago con esa referencia");
+        exit();
     }
-    exit();
 }
 
 
-// Desactivar cobro 
-if (isset($_GET['desactivar'])) {
-    $id = intval($_GET['desactivar']);
-    if ($conexion->query("UPDATE usuarios SET pago = 0 WHERE id = $id")) {
-        header("Location: cobro.php?alert=Cuenta desactivada correctamente");
-    } else {
-        header("Location: cobro.php?alert=Error al desactivar cuenta");
+
+function buscar_pago_por_referencia($conexion, $referencia) {
+    $referencia = $conexion->real_escape_string($referencia);
+    
+    // Buscar información del pago
+    $sql = "
+        SELECT 
+            p.id AS pago_id,
+            p.referencia,
+            p.fecha_pago,
+            p.monto AS total_pago,
+            p.metodo_pago,
+            p.estado AS estado_pago,
+            u.nombre AS cliente,
+            u.correo,
+            u.telefono,
+            u.direccion,
+            c.id AS contrato_id,
+            c.estado AS estado_contrato,
+            paq.nombre AS paquete
+        FROM pagos p
+        JOIN usuarios u ON p.usuario_id = u.id
+        JOIN contratos c ON p.contrato_id = c.id
+        JOIN paquetes paq ON c.paquete_id = paq.id
+        WHERE p.referencia = '$referencia'
+        LIMIT 1
+    ";
+    
+    $resultado = $conexion->query($sql);
+    
+    if (!$resultado || $resultado->num_rows == 0) {
+        return null;
     }
-    exit();
+    
+    $pago = $resultado->fetch_assoc();
+    
+    
+
+    // Obtener detalles de los pagos mensuales incluidos
+    $sql_detalles = "
+        SELECT 
+            f.numero_pago,
+            f.fecha_pago_esperada,
+            f.monto,
+            f.estado
+        FROM pagos_detalle pd
+        JOIN fechas_pagos f ON pd.fecha_pago_id = f.id
+        WHERE pd.pago_id = " . $pago['pago_id'] . "
+        ORDER BY f.numero_pago ASC
+    ";
+    
+    $detalles = $conexion->query($sql_detalles);
+    $pago['detalles'] = [];
+    
+    while ($detalle = $detalles->fetch_assoc()) {
+        $pago['detalles'][] = $detalle;
+    }
+    
+    return $pago;
 }
 
+function buscar_pagos_por_nombre($conexion, $nombre) {
+    $nombre = $conexion->real_escape_string($nombre);
 
-//tabla
-function mostrar_tabla($conexion, $busqueda = '', $botones = true) {
-    $busqueda = $conexion->real_escape_string($busqueda);
-    $sql = "SELECT 
-                u.id, 
-                u.nombre, 
-                u.direccion, 
-                COALESCE(p.nombre, 'Sin paquete') AS paquete, 
-                COALESCE(p.precio, 0.00) AS precio, 
-                u.activo, 
-                u.pago
-            FROM usuarios u
-            LEFT JOIN paquetes p ON u.id_paquete = p.id
-            WHERE u.tipo = 'cliente' 
-              AND (u.nombre LIKE '%$busqueda%' OR u.direccion LIKE '%$busqueda%')";
+    $sql = "
+        SELECT 
+            p.id AS pago_id,
+            p.referencia,
+            p.fecha_pago,
+            p.monto AS total_pago,
+            p.metodo_pago,
+            p.estado AS estado_pago,
+            u.nombre AS cliente,
+            u.correo,
+            u.telefono,
+            u.direccion,
+            c.id AS contrato_id,
+            c.estado AS estado_contrato,
+            paq.nombre AS paquete
+        FROM pagos p
+        JOIN usuarios u ON p.usuario_id = u.id
+        JOIN contratos c ON p.contrato_id = c.id
+        JOIN paquetes paq ON c.paquete_id = paq.id
+        WHERE u.nombre LIKE '%$nombre%'
+    ";
 
     $resultado = $conexion->query($sql);
-    if (!$resultado) {
-        echo "Error en la consulta SQL: " . $conexion->error;
-        return;
+
+    if (!$resultado || $resultado->num_rows == 0) {
+        return [];
     }
 
-    echo '<table>
-      <tr>
-        <th>Nombre</th>
-        <th>Dirección</th>
-        <th>Paquete</th>
-        <th>Precio</th>
-        <th>Estado</th>
-        <th>Pago</th>';
-    if ($botones) echo '<th>Acciones</th>';
-    echo '</tr>';
+    $pagos = [];
 
-    while ($fila = $resultado->fetch_assoc()) {
-        $estado = $fila['activo'] ? 'Activo' : 'Inactivo';
-        $pago = $fila['pago'] ? 'Pagado' : 'Pendiente';
+    while ($pago = $resultado->fetch_assoc()) {
 
-        $color_estado = $fila['activo'] ? 'verde' : 'rojo';
-        $color_pago = $fila['pago'] ? 'verde' : 'rojo';
+        // Obtener detalles del pago (fechas mensuales incluidas)
+        $sql_detalles = "
+            SELECT 
+                f.numero_pago,
+                f.fecha_pago_esperada,
+                f.monto,
+                f.estado
+            FROM pagos_detalle pd
+            JOIN fechas_pagos f ON pd.fecha_pago_id = f.id
+            WHERE pd.pago_id = " . $pago['pago_id'] . "
+            ORDER BY f.numero_pago ASC
+        ";
 
-        echo '<tr>
-            <td>'.htmlspecialchars($fila['nombre']).'</td>
-            <td>'.htmlspecialchars($fila['direccion']).'</td>
-            <td>'.htmlspecialchars($fila['paquete']).'</td>
-            <td>$'.htmlspecialchars($fila['precio']).'</td>
-            <td class="'.$color_estado.'">'.$estado.'</td>
-            <td class="'.$color_pago.'">'.$pago.'</td>';
+        $detalles = $conexion->query($sql_detalles);
+        $pago['detalles'] = [];
 
-        if ($botones) {
-            echo '<td>
-                <button class="btn btn-pagar" '.($fila['pago'] ? 'disabled' : 'onclick="window.location=\'cobro.php?pagar='.$fila['id'].'\'"').'>Cobrar</button>
-                <button class="btn btn-desactivar" '.(!$fila['activo'] ? 'disabled' : 'onclick="window.location=\'cobro.php?desactivar='.$fila['id'].'\'"').'>Desactivar</button>
-            </td>';
+        while ($detalle = $detalles->fetch_assoc()) {
+            $pago['detalles'][] = $detalle;
         }
 
-        echo '</tr>';
+        $pagos[] = $pago;
     }
 
-    echo '</table>';
+    return $pagos;
+}
+
+
+function mostrar_resultado_busqueda($pago) {
+    if (!$pago) {
+        echo '<div class="resultado-vacio">';
+        echo '<p> No se encontró ningún pago con esa referencia.</p>';
+        echo '<p>Por favor, verifique la referencia e intente nuevamente.</p>';
+        echo '</div>';
+        return;
+    }
+    
+    $estado_clase = $pago['estado_pago'] == 'Pagado' ? 'badge-activo' : 'badge-pendiente';
+    $puede_confirmar = $pago['estado_pago'] == 'Pendiente';
+    
+    echo '<div class="resultado-pago">';
+    
+
+    echo '<div class="resultado-header">';
+    echo '<div>';
+    echo '<h2>Información del Pago</h2>';
+    echo '<p class="referencia-grande">Ref: ' . htmlspecialchars($pago['referencia']) . '</p>';
+    echo '</div>';
+    echo '<span class="badge-grande '.$estado_clase.'">'.htmlspecialchars($pago['estado_pago']).'</span>';
+    echo '</div>';
+    
+    // Información del cliente
+    echo '<div class="info-cliente">';
+    echo '<h3> Información del Cliente</h3>';
+    echo '<div class="info-grid">';
+    echo '<div class="info-item"><strong>Nombre:</strong> '.htmlspecialchars($pago['cliente']).'</div>';
+    echo '<div class="info-item"><strong>Correo:</strong> '.htmlspecialchars($pago['correo']).'</div>';
+    echo '<div class="info-item"><strong>Teléfono:</strong> '.htmlspecialchars($pago['telefono'] ?? 'N/A').'</div>';
+    echo '<div class="info-item"><strong>Dirección:</strong> '.htmlspecialchars($pago['direccion'] ?? 'N/A').'</div>';
+    echo '<div class="info-item"><strong>Paquete:</strong> '.htmlspecialchars($pago['paquete']).'</div>';
+    echo '<div class="info-item"><strong>Contrato:</strong> #'.htmlspecialchars($pago['contrato_id']).'</div>';
+    echo '</div>';
+    echo '</div>';
+    
+    // Información del pago
+    echo '<div class="info-pago">';
+    echo '<h3>Detalles del Pago</h3>';
+    echo '<div class="pago-resumen">';
+    echo '<div class="pago-item"><strong>Fecha de Pago:</strong> '.($pago['fecha_pago'] ? date('d/m/Y', strtotime($pago['fecha_pago'])) : 'Pendiente').'</div>';
+    echo '<div class="pago-item"><strong>Método:</strong> '.htmlspecialchars($pago['metodo_pago']).'</div>';
+    echo '<div class="pago-item total"><strong>TOTAL:</strong> <span class="monto-total">$'.number_format($pago['total_pago'], 2).'</span></div>';
+    echo '</div>';
+    echo '</div>';
+    
+    // Tabla de pagos mensuales incluidos
+    echo '<div class="pagos-incluidos">';
+    echo '<h3> Pagos Mensuales Incluidos</h3>';
+    echo '<table class="tabla-detalles">';
+    echo '<thead>
+            <tr>
+                <th>Pago #</th>
+                <th>Fecha Esperada</th>
+                <th>Monto</th>
+                <th>Estado</th>
+            </tr>
+          </thead>
+          <tbody>';
+
+    // Pdf
+echo '<div class="comprobante-pdf">';
+echo '<a href="comprobante.php?referencia='.urlencode($pago['referencia']).'" 
+        target="_blank" class="btn-pdf">
+        <i class="bi bi-filetype-pdf"></i>
+         Descargar Comprobante PDF
+      </a>';
+echo '</div>';
+
+    
+    foreach ($pago['detalles'] as $detalle) {
+        $color_estado = '';
+        switch($detalle['estado']) {
+            case 'Pagado': $color_estado = 'green'; break;
+            case 'Atrasado': $color_estado = 'red'; break;
+            case 'Pendiente': $color_estado = 'orange'; break;
+        }
+        
+        echo '<tr>';
+        echo '<td><strong>'.$detalle['numero_pago'].'</strong></td>';
+        echo '<td>'.date('d/m/Y', strtotime($detalle['fecha_pago_esperada'])).'</td>';
+        echo '<td>$'.number_format($detalle['monto'], 2).'</td>';
+        echo '<td style="color:'.$color_estado.'; font-weight:bold;">'.htmlspecialchars($detalle['estado']).'</td>';
+        echo '</tr>';
+    }
+    
+    echo '</tbody></table>';
+    echo '</div>';
+    
+    // Botón de confirmación
+    if ($puede_confirmar) {
+        echo '<form method="POST" action="cobro.php" class="form-confirmar">';
+        echo '<input type="hidden" name="confirmar_pago" value="1">';
+        echo '<input type="hidden" name="referencia" value="'.htmlspecialchars($pago['referencia']).'">';
+        echo '<button type="submit" class="btn-confirmar-pago" onclick="return confirm(\'¿Confirmar que el cliente pagó $'.number_format($pago['total_pago'], 2).'?\')">
+                ✓ Confirmar Pago
+              </button>';
+        echo '</form>';
+    } else {
+        echo '<div class="pago-confirmado">';
+        echo '<p>Este pago ya fue confirmado el '.date('d/m/Y', strtotime($pago['fecha_pago'])).'</p>';
+        echo '</div>';
+    }
+    
+    echo '</div>'; 
+}
+
+
+
+function obtener_estadisticas($conexion) {
+    $stats = [];
+    
+    // Total de pagos pendientes de confirmar
+    $result = $conexion->query("
+        SELECT COUNT(*) as total, COALESCE(SUM(monto), 0) as monto_total 
+        FROM pagos 
+        WHERE estado = 'Pendiente'
+    ");
+    $stats['pendientes'] = $result->fetch_assoc();
+    
+    // Total de pagos confirmados hoy
+    $result = $conexion->query("
+        SELECT COUNT(*) as total, COALESCE(SUM(monto), 0) as monto_total 
+        FROM pagos 
+        WHERE estado = 'Pagado' 
+        AND DATE(fecha_pago) = CURDATE()
+    ");
+    $stats['hoy'] = $result->fetch_assoc();
+    
+    // Total del mes
+    $result = $conexion->query("
+        SELECT COUNT(*) as total, COALESCE(SUM(monto), 0) as monto_total 
+        FROM pagos 
+        WHERE estado = 'Pagado'
+        AND MONTH(fecha_pago) = MONTH(CURDATE()) 
+        AND YEAR(fecha_pago) = YEAR(CURDATE())
+    ");
+    $stats['mes_actual'] = $result->fetch_assoc();
+    
+    return $stats;
 }
 ?>
