@@ -1,33 +1,46 @@
 <?php
-include("conexion.php");
+session_start();
+include 'conexion.php';
 
-$correo = $_POST['email'] ?? '';
-$contrasena = $_POST['password'] ?? '';
+$correo   = $_POST['email'] ?? '';
+$password = $_POST['password'] ?? '';
 
-if ($correo && $contrasena) {
-    // Buscar usuario con correo y contraseña igualitos
-$stmt = $conexion->prepare("SELECT * FROM usuarios WHERE correo = ? AND password = ?");
-
-    $stmt->bind_param("ss", $correo, $contrasena);
-    $stmt->execute();
-    $resultado = $stmt->get_result();
-
-    if ($resultado->num_rows > 0) {
-        $usuario = $resultado->fetch_assoc();
-
-        if ($usuario['rol'] === 'admin' || $usuario['rol'] === 'admin') {
-            echo "<script>window.location.href='admin.php';</script>";
-        } else {
-            echo "<script>alert('Bienvenido Cliente'); window.location.href='cliente.php';</script>";
-        }
-    } else {
-        echo "<script>alert('Correo o contraseña incorrectos'); window.history.back();</script>";
-    }
-
-    $stmt->close();
-} else {
-    echo "<script>alert('Por favor completa todos los campos'); window.history.back();</script>";
+if (empty($correo) || empty($password)) {
+    die("Faltan datos");
 }
 
-$conexion->close();
+$stmt = $conexion->prepare("
+    SELECT id, nombre, telefono, direccion, correo, password, activo
+    FROM usuarios
+    WHERE correo = ?
+");
+$stmt->bind_param("s", $correo);
+$stmt->execute();
+$result = $stmt->get_result();
+
+if ($result->num_rows === 0) {
+    die("Usuario no encontrado");
+}
+
+$usuario = $result->fetch_assoc();
+
+// ❗ Contraseña SIN ENCRIPTAR — comparación directa
+if ($password !== $usuario['password']) {
+    die("Contraseña incorrecta");
+}
+
+// Verificar si la cuenta está activa
+if ($usuario['activo'] != 1) {
+    die("Usuario no verificado");
+}
+
+// Sesión del usuario
+$_SESSION['usuario_id'] = $usuario['id'];
+$_SESSION['nombre']      = $usuario['nombre'];
+$_SESSION['correo']      = $usuario['correo'];
+$_SESSION['telefono']    = $usuario['telefono'];
+$_SESSION['direccion']   = $usuario['direccion'];
+
+header("Location: principal.php");
+exit;
 ?>
