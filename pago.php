@@ -310,7 +310,13 @@ function mostrar_resultado_busqueda($pago) {
             </tr>
           </thead>
           <tbody>';
-    
+    echo '<a href="comprobante.php?referencia=' . htmlspecialchars($pago['referencia']) . '" 
+        class="btn btn-primary" 
+        target="_blank">
+        Descargar comprobante
+      </a>';
+
+
     foreach ($pago['detalles'] as $detalle) {
         $color_estado = '';
         switch($detalle['estado']) {
@@ -332,18 +338,53 @@ function mostrar_resultado_busqueda($pago) {
     
     
     if ($puede_confirmar) {
-        echo '<form method="POST" action="cobro.php" class="form-confirmar">';
-        echo '<input type="hidden" name="confirmar_pago" value="1">';
-        echo '<input type="hidden" name="referencia" value="'.htmlspecialchars($pago['referencia']).'">';
-        echo '<button type="submit" class="btn-confirmar-pago" onclick="return confirm(\'¿Confirmar que el cliente pagó $'.number_format($pago['total_pago'], 2).'?\')">
-                ✓ Confirmar Pago
-              </button>';
-        echo '</form>';
-    } else {
-        echo '<div class="pago-confirmado">';
-        echo '<p>Este pago ya fue confirmado el '.date('d/m/Y', strtotime($pago['fecha_pago'])).'</p>';
-        echo '</div>';
-    }
+
+    // Formulario
+    echo '<form method="POST" action="cobro.php" class="form-confirmar" id="formConfirmacionPago">';
+    echo '<input type="hidden" name="confirmar_pago" value="1">';
+    echo '<input type="hidden" name="referencia" value="'.htmlspecialchars($pago['referencia']).'">';
+
+    // Botón sin confirm() normal
+    echo '<button type="button" id="btnConfirmarPago" class="btn-confirmar-pago">
+            ✓ Confirmar Pago
+          </button>';
+
+    echo '</form>';
+
+    // Script SweetAlert2
+    echo '
+    <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script>
+
+    <script>
+        document.getElementById("btnConfirmarPago").addEventListener("click", function() {
+
+            Swal.fire({
+                title: "Confirmar Pago",
+                text: "¿Confirmar que el cliente pagó $'.number_format($pago['total_pago'], 2).'?",
+                icon: "question",
+                showCancelButton: true,
+                confirmButtonText: "Sí, confirmar",
+                cancelButtonText: "Cancelar"
+            }).then((result) => {
+
+                if (result.isConfirmed) {
+                    document.getElementById("formConfirmacionPago").submit();
+                }
+
+            });
+
+        });
+    </script>
+    ';
+    
+} else {
+
+    echo '<div class="pago-confirmado">';
+    echo '<p>Este pago ya fue confirmado el '.date('d/m/Y', strtotime($pago['fecha_pago'])).'</p>';
+    echo '</div>';
+
+}
+
     
     echo '</div>'; 
     } 
