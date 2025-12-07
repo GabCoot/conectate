@@ -1,0 +1,56 @@
+<?php
+include 'conexion.php';
+header("Content-Type: application/json; charset=UTF-8");
+
+if ($_SERVER['REQUEST_METHOD'] !== 'POST') {
+    echo json_encode(['status' => 'error', 'message' => 'Método no permitido']);
+    exit;
+}
+
+$usuario_id = $_POST['usuario_id'] ?? null;
+$contrato_id = $_POST['contrato_id'] ?? null;
+$fechas_ids = $_POST['fechas_ids'] ?? null;
+$monto_total = $_POST['monto_total'] ?? null;
+$referencia = $_POST['referencia'] ?? uniqid("REF_");
+
+if (!$usuario_id || !$contrato_id || !$fechas_ids || !$monto_total) {
+    echo json_encode(['status' => 'error', 'message' => 'Faltan datos requeridos']);
+    exit;
+}
+
+$ids = explode(",", $fechas_ids);
+
+$conn->begin_transaction();
+
+try {
+    // Insertar el pago principal
+    $stmt = $conn->prepare("INSERT INTO pagos (fecha_pago, monto, metodo_pago, referencia, usuario_id, contrato_id) VALUES (NOW(), ?, 'Efectivo', ?, ?, ?)");
+    $stmt->bind_param("dsii", $monto_total, $referencia, $usuario_id, $contrato_id);
+    $stmt->execute();
+    $pago_id = $conn->insert_id;
+
+    // Insertar los detalles (sin modificar estado de las fechas)
+    $stmtDetalle = $conn->prepare("INSERT INTO pagos_detalle (pago_id, fecha_pago_id) VALUES (?, ?)");
+
+    foreach ($ids as $fid) {
+        $fid = intval($fid);
+        $stmtDetalle->bind_param("ii", $pago_id, $fid);
+        $stmtDetalle->execute();
+    }
+
+    $conn->commit();
+
+    echo json_encode([
+        'status' => 'success',
+        'message' => 'Pago registrado correctamente',
+        'pago_id' => $pago_id,
+        'referencia' => $referencia
+    ]);
+
+} catch (Exception $e) {
+    $conn->rollback();
+    echo json_encode(['status' => 'error', 'message' => 'Error al registrar el pago: ' . $e->getMessage()]);
+}
+
+$conn->close();
+?>
